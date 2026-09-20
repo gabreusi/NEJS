@@ -1,14 +1,9 @@
-import ColorClass from "./classes/Color.js";
-import PalleteClass from "./classes/Palette.js";
-import TilesetClass from "./classes/Tileset.js";
-import { instance, start } from "./main.js";
-import { config } from "./config.js";
+import { start } from "./main.js";
 
 export const Sprites = {
 	TileSet: new Image(),
 	array: [],
-	size: 8,
-	tileSize: 8 * 2,
+	size: 16,
 };
 
 function iterateTileSet() {
@@ -16,20 +11,20 @@ function iterateTileSet() {
 	for (
 		let tileLine = 0;
 		tileLine < Sprites.TileSet.height;
-		tileLine += Sprites.tileSize
+		tileLine += Sprites.size
 	) {
 		for (
 			let tileColumn = 0;
 			tileColumn < Sprites.TileSet.width;
-			tileColumn += Sprites.tileSize
+			tileColumn += Sprites.size
 		) {
 			promises.push(
 				createImageBitmap(
 					Sprites.TileSet,
 					tileColumn,
 					tileLine,
-					Sprites.tileSize,
-					Sprites.tileSize
+					Sprites.size,
+					Sprites.size
 				)
 			);
 		}
@@ -42,6 +37,6 @@ Sprites.TileSet.image;
 Sprites.TileSet.onload = () => {
 	Promise.all(iterateTileSet()).then((sprites) => {
 		Sprites.array = sprites;
-		if (!config.editorMode) start();
+		start();
 	});
 };

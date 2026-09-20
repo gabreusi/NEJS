@@ -17,53 +17,11 @@ body {
 	);
 	filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#414141",endColorstr="#282828",GradientType=1);
 
-	width: 100vw;
-	height: 100vh;
+    width: 100vw;
+    height: 100vh;
 
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-}
-
-#debug {
-	color: white;
-	font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-	padding: 0px 50px;
-	position: absolute;
-	left: 0;
-}
-
-#debug * {
-	margin: 2px;
-}
-
-#debug > div > div {
-	margin-left: 15px;
-}
-
-#editor-button,
-#debugger-button {
-	width: 150px;
-	height: 40px;
-}
-
-#menus {
-	width: 100vw;
-	display: flex;
-	position: absolute;
-	top: 0;
-}
-
-#menus button {
-	color: white;
-	font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-	text-transform: uppercase;
-	font-weight: bold;
-	cursor: pointer;
-	transition: transform 0.1s ease-in-out;
-}
-
-#menus button:active {
-	transform: scale(0.99);
 }

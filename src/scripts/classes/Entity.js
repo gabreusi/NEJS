@@ -1,101 +1,55 @@
-import {
-	heightRatio,
-	p as canvasPainter,
-	screen,
-	widthRatio,
-} from "../render.js";
+import { heightRatio, p, screen, widthRatio } from "../render.js";
 import { Sprites } from "../sprites.js";
-import { contains, isValid, lineOverlaps } from "../utils.js";
-import { logObject } from "../log.js";
-import AreaClass from "./Area.js";
-import { world } from "../world.js";
 
-export class EntityClass extends AreaClass {
+export class EntityClass {
 	spriteArray = [];
-	onGround = false;
-	renderStepCount = 0;
-	stepVx = 0;
 
-	constructor(props) {
-		const defaultProps = {
-			xTile: 0,
-			yTile: 0,
-			width: 0,
-			height: 0,
-			spriteIndex: 0,
-			name: `entity ${world.entities?.length + 1}`,
-			group: "entities",
-			debug: [],
-			vx: 0,
-			vy: 0,
-			layer: 0,
-		};
-
-		const configProps = { ...defaultProps, ...props };
-
-		const {
-			xTile,
-			yTile,
-			width,
-			height,
-			vy,
-			vx,
-			spriteIndex,
-			name,
-			debug,
-			group,
-			layer,
-		} = configProps;
-
-		super(
-			Sprites.tileSize * xTile,
-			Sprites.tileSize * yTile,
-			Sprites.tileSize * width,
-			Sprites.tileSize * height
-		);
-
-		this.vy = vy;
-		this.vx = vx;
-
+	constructor(xTile, yTile, width, height, spriteIndex) {
+		this.x = Sprites.size * xTile * widthRatio;
+		this.y = Sprites.size * yTile * heightRatio;
+		this.width = Sprites.size * width * widthRatio;
+		this.height = Sprites.size * height * heightRatio;
+		this.vy = 0;
+		this.vx = 0;
+		this.onGround = false;
+		this.renderStepCount = 0;
 		this.spriteIndex = spriteIndex;
-		this.name = name;
-		this.debug = debug;
-
-		if (!world[group]) world[group] = [];
-		world[group].push(this);
-
-		if (!world.layers[layer]) world.layers[layer] = [];
-		world.layers[layer].push(this);
-	}
-	log() {
-		if (this.debug.length != 0) logObject(this, this.debug);
-	}
-	transformCoordinates(coordinate) {
-		return Math.floor(coordinate / 10000);
 	}
 	updateSprite() {
 		if (this.spriteArray.length === 0) this.spriteArray = Sprites.array;
 	}
+	updateSides() {
+		this.top = this.y;
+		this.right = this.x + this.width;
+		this.bottom = this.y + this.height;
+		this.left = this.x;
+
+		this.futureRight = this.right + this.vx;
+		this.futureLeft = this.left + this.vx;
+		this.futureBottom = this.bottom + this.vy;
+		this.futureTop = this.top + this.vy;
+	}
 	sumVx(value) {
-		this.vx += value * widthRatio;
+		this.vx += value;
 
-		if (this.vx > this.vxCap) this.vx = this.vxCap;
+		if (this.vx > this.vxCap) {
+			this.vx = this.vxCap;
+		}
 
-		if (this.vx < -this.vxCap) this.vx = -this.vxCap;
+		if (this.vx < -this.vxCap) {
+			this.vx = -this.vxCap;
+		}
+
+		//Fix sliding
+		if ((this.vx < 0.2 && this.vx > 0) || (this.vx > -0.2 && this.vx < 0)) {
+			this.vx = 0;
+		}
 	}
 	sumVy(value) {
 		this.vy += value;
 
 		//limits vertical velocity
 		if (this.vy > this.vyCap) this.vy = this.vyCap;
-
-		this.vy = Math.round((this.vy + Number.EPSILON) * 100) / 100;
-	}
-	entityCollision() {}
-	wallCollision() {}
-	calculateCollision() {
-		this.wallCollision();
-		this.entityCollision();
 	}
 	changeSprite() {
 		this.updateSprite();
@@ -110,65 +64,53 @@ export class EntityClass extends AreaClass {
 			this.sprite = this.spriteArray[this.spriteIndex];
 		}
 	}
-	render() {
+	async render() {
 		//Sprite logic
 		this.changeSprite();
-		this.update();
 
 		//StepCount for changing sprite
 		this.renderStepCount++;
 
 		//Render
-
-		if (!isValid(this.newSprite))
-			for (let i = 0; i < this.height; i += Sprites.tileSize * heightRatio)
-				for (let j = 0; j < this.width; j += Sprites.tileSize * widthRatio) {
-					// canvasPainter.clearRect(
-					//   this.x,
-					//   this.y,
-					//   this.sprite.width * widthRatio,
-					//   this.sprite.height * heightRatio
-					// );
-					canvasPainter.drawImage(
-						this.sprite,
-						this.x + j,
-						this.y + i,
-						this.sprite.width * widthRatio,
-						this.sprite.height * heightRatio
-					);
-				}
-		else {
-			this.newSprite.x = this.x;
-			this.newSprite.y = this.y;
-			this.newSprite.positionTiles();
-			//this.newSprite.render();
-		}
+		for (let i = 0; i < this.height; i += Sprites.size * heightRatio)
+			for (let j = 0; j < this.width; j += Sprites.size * widthRatio)
+				p.drawImage(
+					this.sprite,
+					this.x + j,
+					this.y + i,
+					this.sprite.width * widthRatio,
+					this.sprite.height * heightRatio
+				);
 	}
-	screenCollision() {
+	screenColission() {
 		//Collides with ground
-		if (this.yHeight >= screen.height) {
+		if (this.futureBottom > screen.height) {
 			this.onGround = true;
-			this.y = screen.height - this.height;
+			while (this.y + this.height < screen.height) this.y++;
 			this.vy = 0;
 		}
 
-		//Collides with left wall
-		if (this.left < 0) {
-			this.x = 0;
+		//Collides with right wall
+		if (this.futureRight > screen.width) {
+			while (this.x + this.width < screen.width - 1) this.x++;
 			this.vx = 0;
 		}
 
-		//Collides with right wall
-		if (this.right >= screen.width) {
-			this.x = screen.width - this.width;
+		//Collides with left wall
+		if (this.futureLeft > screen.width || this.x + this.vx < 0) {
+			while (this.x > 1) this.x--;
 			this.vx = 0;
 		}
 	}
-	checkCollision(other) {
-		if (this.checkTopCollision(other)) return "top";
-		if (this.checkRightCollision(other)) return "right";
-		if (this.checkLeftCollision(other)) return "left";
-		if (this.checkBottomCollision(other)) return "bottom";
+	checkCollission(other) {
+		if (
+			this.checkTopCollision(other) ||
+			this.checkRightCollision(other) ||
+			this.checkBottomCollision(other) ||
+			this.checkLeftCollision(other)
+		)
+			return true;
+		return false;
 	}
 	checkSidesCollision(other) {
 		if (this.checkRightCollision(other) || this.checkLeftCollision(other))
@@ -181,15 +123,91 @@ export class EntityClass extends AreaClass {
 		return false;
 	}
 	checkTopCollision(other) {
-		return this.topArea.isInsideArea(other.bottomArea);
+		other.updateSides();
+		//Check if it is above the other
+		if (
+			((this.futureRight >= other.futureLeft &&
+				this.futureRight <= other.futureRight) ||
+				(this.futureLeft >= other.futureLeft &&
+					this.futureLeft <= other.futureRight) ||
+				(this.futureLeft <= other.futureLeft &&
+					this.futureRight >= other.futureRight) ||
+				(this.left <= other.futureLeft && this.right >= other.futureRight)) &&
+			this.futureBottom <= other.futureTop + this.vy
+		) {
+			//Check for colldision
+			if (
+				this.futureBottom >= other.futureTop &&
+				this.futureBottom <= other.futureBottom
+			) {
+				return true;
+			}
+			return false;
+		}
 	}
 	checkRightCollision(other) {
-		return this.rightArea.isInsideArea(other.leftArea);
+		other.updateSides();
+		//Check if its is on the right side of the other
+		if (
+			((this.futureTop >= other.futureTop &&
+				this.futureTop <= other.futureBottom) ||
+				(this.futureTop <= other.futureTop &&
+					this.futureBottom >= other.futureBottom) ||
+				(this.futureBottom >= other.futureTop &&
+					this.futureBottom <= other.futureBottom) ||
+				(this.top <= other.futureTop && this.bottom >= other.futureBottom)) &&
+			this.futureLeft > other.futureRight + this.vx
+		) {
+			//Check for collison
+			if (
+				this.futureLeft <= other.futureRight &&
+				this.futureLeft >= other.futureLeft
+			)
+				return true;
+			return false;
+		}
 	}
 	checkBottomCollision(other) {
-		return this.bottomArea.isInsideArea(other.topArea);
+		other.updateSides();
+		//Check if its is below the other
+		if (
+			((this.futureRight >= other.futureLeft &&
+				this.futureRight <= other.futureRight) ||
+				(this.futureLeft >= other.futureLeft &&
+					this.futureLeft <= other.futureRight) ||
+				(this.futureLeft <= other.futureLeft &&
+					this.futureRight >= other.futureRight) ||
+				(this.left <= other.futureLeft && this.right >= other.futureRight)) &&
+			this.futureTop >= other.futureBottom + this.vy
+		) {
+			//Check for collision
+			if (
+				this.futureTop <= other.futureBottom + 1 &&
+				this.futureTop >= other.futureTop
+			)
+				return true;
+			return false;
+		}
 	}
 	checkLeftCollision(other) {
-		return this.leftArea.isInsideArea(other.rightArea);
+		other.updateSides();
+		//Check if its is on the left side of the other
+		if (
+			((this.futureTop >= other.futureTop &&
+				this.futureTop <= other.futureBottom) ||
+				(this.futureTop <= other.futureTop &&
+					this.futureBottom >= other.futureBottom) ||
+				(this.futureBottom >= other.futureTop &&
+					this.futureBottom <= other.futureBottom)) &&
+			this.futureRight < other.futureLeft + this.vx
+		) {
+			//Check for collison
+			if (
+				this.futureRight <= other.futureRight &&
+				this.futureRight >= other.futureLeft
+			)
+				return true;
+			return false;
+		}
 	}
 }

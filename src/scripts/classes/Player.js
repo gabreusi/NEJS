@@ -4,119 +4,59 @@ import { world } from "../world.js";
 import { EntityClass } from "./Entity.js";
 
 export class PlayerClass extends EntityClass {
-	constructor(props) {
-		const defaultProps = {
-			name: "Player",
-			walkingCap: 50 * 625,
-			runningCap: 100 * 625,
-			jumpHeight: 100 * 1250,
-			acceleration: 625,
-			deceleration: 625,
-			spriteChangeRate: 0,
-		};
-		const configProps = { ...defaultProps, ...props };
-
-		super(configProps);
-
-		const {
-			walkingCap,
-			runningCap,
-			jumpHeight,
-			acceleration,
-			deceleration,
-			spriteChangeRate,
-		} = configProps;
-
-		this.walkingCap = walkingCap;
-		this.runningCap = runningCap;
-		this.jumpHeight = jumpHeight;
-		this.acceleration = acceleration;
-		this.deceleration = deceleration;
-		this.spriteChangeRate = spriteChangeRate;
+	constructor(xTile, yTile, width, height, spriteIndex) {
+		super(xTile, yTile, width, height, spriteIndex);
+		this.vx = 0;
+		this.vy = 0;
+		this.walkingCap = 2 * widthRatio;
+		this.runningCap = 4 * widthRatio;
+		this.jumpHeight = 6 * heightRatio;
+		this.acceleration = 0.2 * widthRatio;
+		this.deacceleration = 0.25 * widthRatio;
+		this.spriteChangeRate = 0;
 	}
-	decelerate() {
-		//Decelerates the player's velocity.
-		if (this.vx > 0) {
-			if (this.vx - this.deceleration <= 0) this.vx = 0;
-			else this.sumVx(-this.deceleration);
-		} else if (this.vx < 0) {
-			if (this.vx + this.deceleration >= 0) this.vx = 0;
-			else this.sumVx(this.deceleration);
-		}
+	deaccelerate() {
+		if (this.vx > 0) this.sumVx(-this.deacceleration);
+		else if (this.vx < 0) this.sumVx(this.deacceleration);
 	}
-	horizontalWallCollision() {
-		world.group("walls").forEach((wall) => {
-			if (this.checkLeftCollision(wall)) {
-				this.x -= this.transformCoordinates(this.vx);
-				this.vx = 0;
-
-				return;
-			}
-			if (this.checkRightCollision(wall)) {
-				this.x -= this.transformCoordinates(this.vx);
-				this.vx = 0;
-
-				return;
-			}
-		});
-	}
-	verticalWallCollision() {
-		world.group("walls").forEach((wall) => {
-			if (this.checkBottomCollision(wall)) {
-				while (this.y + this.height + 5 < wall.y) this.y++;
+	wallCollision() {
+		world.walls.forEach((wall) => {
+			if (this.checkTopCollision(wall)) {
+				while (this.y + this.height < wall.top - 1) this.y++;
 				this.vy = 0;
 				this.onGround = true;
-
-				return;
-			}
-			if (this.checkTopCollision(wall)) {
+			} else if (this.checkBottomCollision(wall)) {
+				while (this.y > wall.bottom + 2) this.y--;
 				this.vy = 0;
-
-				return;
+			} else if (this.checkLeftCollision(wall)) {
+				while (this.x + this.width < wall.left - 1) this.x++;
+				this.vx = 0;
+			} else if (this.checkRightCollision(wall)) {
+				while (this.x > wall.right + 1) this.x--;
+				this.vx = 0;
 			}
 		});
 	}
-	entityCollision() {
-		const entities = world.group("entities");
-		for (let i = 0; i < entities.length; i++) {
-			if (world.entities[i] != undefined && entities[i] != this) {
-				const collided = this.checkCollision(entities[i]);
-
-				if (collided)
-					if (collided === "top") {
-						this.vy = -3;
-						delete world.entities[i];
-					} else {
-						location.reload();
-					}
-			}
-		}
-	}
 	calculateMovement() {
+		this.updateSides();
+
+		keyMap["shift"]
+			? (this.vxCap = this.runningCap)
+			: (this.vxCap = this.walkingCap);
+
 		//Gravity
 		this.sumVy(world.gravity * heightRatio);
+
+		//deaccelerates when not moving
+		if (!keyMap["a"] && !keyMap["d"]) this.deaccelerate();
+
+		this.screenColission();
 
 		//Jumps
 		if ((keyMap["w"] || keyMap[" "]) && this.onGround) {
 			this.onGround = false;
 			this.sumVy(-this.jumpHeight);
 		}
-
-		this.y += this.transformCoordinates(this.vy);
-
-		this.update();
-		this.verticalWallCollision();
-
-		this.update();
-
-		keyMap["shift"]
-			? (this.vxCap = this.runningCap)
-			: (this.vxCap = this.walkingCap);
-
-		//decelerates when not moving
-		if (!keyMap["a"] && !keyMap["d"]) this.decelerate();
-
-		this.screenCollision();
 
 		let direction = 0;
 
@@ -130,13 +70,23 @@ export class PlayerClass extends EntityClass {
 		if (keyMap["a"] != keyMap["d"]) this.sumVx(this.acceleration * direction);
 
 		//Cancel Movement
-		if (keyMap["a"] && keyMap["d"]) this.decelerate();
+		if (keyMap["a"] && keyMap["d"]) this.deaccelerate();
 
-		this.x += this.transformCoordinates(this.vx);
+		//Check for collisions
+		this.wallCollision();
 
-		this.update();
-		this.horizontalWallCollision();
+		for (let i = 1; i < world.entities.length; i++) {
+			if (world.entities[i] != undefined) {
+				if (this.checkTopCollision(world.entities[i])) {
+					this.sumVy(-10);
+					delete world.entities[i];
+				} else if (this.checkCollission(world.entities[i])) {
+					location.reload();
+				}
+			}
+		}
 
-		this.update();
+		this.x += this.vx;
+		this.y += this.vy;
 	}
 }

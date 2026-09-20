@@ -1,26 +1,15 @@
 import { world } from "../world.js";
 import { EntityClass } from "./Entity.js";
-import { goomba, p, screen, widthRatio } from "../render.js";
+import { screen } from "../render.js";
 
 export class EnemyClass extends EntityClass {
-	constructor(props) {
-		const defaultProps = {
-			vx: 1 * widthRatio,
-			vyCap: 5,
-			spriteChangeRate: 0,
-			spriteIndex: 16,
-		};
-
-		const configProps = { ...defaultProps, ...props };
-
-		super(configProps);
-
-		const { vx, spriteIndex, spriteChangeRate, vyCap } = configProps;
-
-		this.vx = vx;
+	constructor(xTile, yTile, width, height, spriteIndex) {
+		super(xTile, yTile, width, height);
+		this.vx = 1;
+		this.vy = 0;
 		this.spriteIndex = spriteIndex;
-		this.spriteChangeRate = spriteChangeRate;
-		this.vyCap = vyCap;
+		this.spriteChangeRate = 0;
+		this.vyCap = 5;
 	}
 	wallCollision() {
 		world.walls.forEach((wall) => {
@@ -40,7 +29,7 @@ export class EnemyClass extends EntityClass {
 			}
 		});
 	}
-	screenCollision() {
+	screenColission() {
 		//Collides with ground
 		if (this.futureBottom > screen.height) {
 			while (this.y + this.height < screen.height) this.y++;
@@ -49,7 +38,7 @@ export class EnemyClass extends EntityClass {
 
 		//Collides with right wall
 		if (this.futureRight > screen.width) {
-			while (this.x + this.width + this.vx < screen.width - 1) this.x++;
+			while (this.x + this.width < screen.width - 1) this.x++;
 			this.vx = -this.vx;
 		}
 
@@ -60,12 +49,11 @@ export class EnemyClass extends EntityClass {
 		}
 	}
 	calculateMovement() {
-		this.newSprite = goomba;
 		this.updateSides();
 		this.sumVy(world.gravity);
 
 		this.wallCollision();
-		this.screenCollision();
+		this.screenColission();
 
 		this.x += this.vx;
 		this.y += this.vy;
